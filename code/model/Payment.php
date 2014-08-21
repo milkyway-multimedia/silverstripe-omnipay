@@ -32,7 +32,7 @@ final class Payment extends DataObject{
 		'Money' => 'Money',
 		'GatewayTitle' => 'Gateway',
 		'Status' => 'Status',
-		'Created' => 'Created'
+		'Created.Nice' => 'Created'
 	);
 
 	private static $default_sort = "\"Created\" DESC, \"ID\" DESC";
@@ -45,9 +45,7 @@ final class Payment extends DataObject{
 		$fields = $fields->makeReadonly();
 		$fields->push(
 			GridField::create("Messages", _t("Payment.MESSAGES", "Messages"), $this->Messages(),
-				GridFieldConfig_RecordEditor::create()
-					->removeComponentsByType('GridFieldAddNewButton')
-					->removeComponentsByType('GridFieldDeleteAction')
+				GridFieldConfig_RecordViewer::create()
 			)
 		);
 
