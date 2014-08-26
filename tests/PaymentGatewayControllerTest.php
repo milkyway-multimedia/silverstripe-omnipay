@@ -7,10 +7,9 @@ class PaymentGatewayControllerTest extends PaymentTest{
 	);
 
 	public function testReturnUrlGeneration() {
-		$transaction = $this->objFromFixture('GatewayMessage', 'message1');
-		$url = PaymentGatewayController::get_return_url($transaction, 'action');
+		$url = PaymentGatewayController::get_endpoint_url('action', "UniqueHashHere12345");
 		$this->assertEquals(
-			Director::absoluteURL("paymentendpoint/UNIQUEHASH23q5123tqasdf/action"),
+			Director::absoluteURL("paymentendpoint/UniqueHashHere12345/action"),
 			$url,
 			"generated url"
 		);
@@ -24,9 +23,6 @@ class PaymentGatewayControllerTest extends PaymentTest{
 		$this->getHttpRequest()->query->replace(array('result' => 'abc123'));
 		//mimic a redirect or request from offsite gateway
 		$response = $this->get("paymentendpoint/UNIQUEHASH23q5123tqasdf/complete");
-		$message = GatewayMessage::get()
-						->filter('Identifier', 'UNIQUEHASH23q5123tqasdf')
-						->first();
 		//redirect works
 		$headers = $response->getHeaders();
 		$this->assertEquals(
@@ -34,7 +30,9 @@ class PaymentGatewayControllerTest extends PaymentTest{
 			$headers['Location'],
 			"redirected to shop/complete"
 		);
-		$payment = $message->Payment();
+		$payment = Payment::get()
+						->filter('Identifier', 'UNIQUEHASH23q5123tqasdf')
+						->first();
 		$this->assertDOSContains(array(
 			array('ClassName' => 'PurchaseRequest'),
 			array('ClassName' => 'PurchaseRedirectResponse'),
@@ -51,12 +49,11 @@ class PaymentGatewayControllerTest extends PaymentTest{
 		$this->getHttpRequest()->query->replace(array('result' => 'abc123'));
 		//mimic a redirect or request from offsite gateway
 		$response = $this->get("paymentendpoint/UNIQUEHASH23q5123tqasdf/notify");
-		$message = GatewayMessage::get()
-						->filter('Identifier', 'UNIQUEHASH23q5123tqasdf')
-						->first();
 		//redirect works
 		$this->assertNull($response->getHeader('Location'));
-		$payment = $message->Payment();
+		$payment = Payment::get()
+						->filter('Identifier', 'UNIQUEHASH23q5123tqasdf')
+						->first();
 		$this->assertDOSContains(array(
 			array('ClassName' => 'PurchaseRequest'),
 			array('ClassName' => 'PurchaseRedirectResponse'),

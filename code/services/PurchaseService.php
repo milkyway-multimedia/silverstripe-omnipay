@@ -22,27 +22,35 @@ class PurchaseService extends PaymentService{
 		if (!$this->payment->isInDB()) {
 			$this->payment->write();
 		}
-		$message = $this->createMessage('PurchaseRequest');
-		$message->SuccessURL = isset($data['returnUrl']) ?
-							$data['returnUrl'] :
-							$this->returnurl;
-		$message->FailureURL = isset($data['cancelUrl']) ?
-							$data['cancelUrl'] :
-							$this->cancelurl;
-		$message->write();
-		$request = $this->oGateway()->purchase(array_merge(
-			$data,
-			array(
-				'card' => $this->getCreditCard($data),
-				'amount' => (float) $this->payment->MoneyAmount,
-				'currency' => $this->payment->MoneyCurrency,
-				'transactionId' => $message->Identifier,
-				'clientIp' => isset($data['clientIp']) ? $data['clientIp'] : null,
-				'returnUrl' => PaymentGatewayController::get_return_url($message, 'complete'),
-				'notifyUrl' => PaymentGatewayController::get_return_url($message, 'notify'),
-				'cancelUrl' => PaymentGatewayController::get_return_url($message, 'cancel')
-			)
+		//update success/fail urls
+		$this->update($data);
+
+		//set the client IP address, if not already set
+		if(!isset($data['clientIp'])){
+			$data['clientIp'] = Controller::curr()->getRequest()->getIP();
+		}
+
+		$gatewaydata = array_merge($data,array(
+			'card' => $this->getCreditCard($data),
+			'amount' => (float) $this->payment->MoneyAmount,
+			'currency' => $this->payment->MoneyCurrency,
+			//set all gateway return/cancel/notify urls to PaymentGatewayController endpoint
+			'returnUrl' => $this->getEndpointURL("complete", $this->payment->Identifier),
+			'cancelUrl' => $this->getEndpointURL("cancel", $this->payment->Identifier),
+			'notifyUrl' => $this->getEndpointURL("notify", $this->payment->Identifier)
 		));
+		
+		if(!isset($gatewaydata['transactionId'])){
+			$gatewaydata['transactionId'] = $this->payment->Identifier;
+		}
+
+		$request = $this->oGateway()->purchase($gatewaydata);
+
+		$message = $this->createMessage('PurchaseRequest', $request);
+		$message->SuccessURL = $this->returnurl;
+		$message->FailureURL = $this->cancelurl;
+		$message->write();
+
 		$this->logToFile($request->getParameters(), "PurchaseRequest_post");
 		$gatewayresponse = $this->createGatewayResponse();
 		try {
@@ -89,12 +97,15 @@ class PurchaseService extends PaymentService{
 	 * This is ususally only called by PaymentGatewayController.
 	 * @return PaymentResponse encapsulated response info
 	 */
-	public function completePurchase() {
+	public function completePurchase($data = array()) {
 		$gatewayresponse = $this->createGatewayResponse();
-		$request = $this->oGateway()->completePurchase(array(
+
+		$gatewaydata = array_merge($data, array(
 			'amount' => (float) $this->payment->MoneyAmount,
 			'currency' => $this->payment->MoneyCurrency
 		));
+
+		$request = $this->oGateway()->completePurchase($gatewaydata);
 		$this->createMessage('CompletePurchaseRequest', $request);
 		$response = null;
 		try {
