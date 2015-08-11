@@ -70,6 +70,8 @@ final class Payment extends DataObject{
 			GatewayInfo::get_supported_gateways()
 		)->setHasEmptyDefault(true), 'Status');
 		$fields->fieldByName('Status')->setHasEmptyDefault(true);
+		
+		$context->addFilter(new PartialMatchFilter('Gateway'));
 
 		return $context;
 	}
@@ -162,6 +164,14 @@ final class Payment extends DataObject{
 		return $this->Status == 'Captured' ||
 				$this->Status == 'Refunded' ||
 				$this->Status == 'Void';
+	}
+
+	/**
+	 * Check the payment is captured.
+	 * @return boolean completion
+	 */
+	public function isCaptured() {
+		return $this->Status == 'Captured';
 	}
 
 	public function forTemplate() {

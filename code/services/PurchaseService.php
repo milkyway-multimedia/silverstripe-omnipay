@@ -51,7 +51,6 @@ class PurchaseService extends PaymentService{
 		$message->FailureURL = $this->cancelurl;
 		$message->write();
 
-		$this->logToFile($request->getParameters(), "PurchaseRequest_post");
 		$gatewayresponse = $this->createGatewayResponse();
 		try {
 			$response = $this->response = $request->send();
@@ -100,10 +99,17 @@ class PurchaseService extends PaymentService{
 	public function completePurchase($data = array()) {
 		$gatewayresponse = $this->createGatewayResponse();
 
+		//set the client IP address, if not already set
+		if(!isset($data['clientIp'])){
+			$data['clientIp'] = Controller::curr()->getRequest()->getIP();
+		}
+
 		$gatewaydata = array_merge($data, array(
 			'amount' => (float) $this->payment->MoneyAmount,
 			'currency' => $this->payment->MoneyCurrency
 		));
+
+		$this->payment->extend('onBeforeCompletePurchase', $gatewaydata);
 
 		$request = $this->oGateway()->completePurchase($gatewaydata);
 		$this->createMessage('CompletePurchaseRequest', $request);
@@ -124,6 +130,18 @@ class PurchaseService extends PaymentService{
 		}
 
 		return $gatewayresponse;
+	}
+
+	public function cancelPurchase() {
+		//TODO: do lookup? / try to complete purchase?
+		//TODO: omnipay void call
+		$this->payment->Status = 'Void';
+		$this->payment->write();
+		$this->createMessage('VoidRequest', array(
+			"Message" => "The payment was cancelled."
+		));
+
+		//return response
 	}
 
 	/**
