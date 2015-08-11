@@ -10,7 +10,7 @@
 	},
 	"require-dev": {
 		"guzzle/plugin-mock": "~3.1",
-		"omnipay/manual": "~2.3"
+		"omnipay/manual": "~2.1"
 	},
 	"extra": {
 		"installer-name": "omnipay"
